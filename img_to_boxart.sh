@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# img2boxart.sh — Converte imagens para PNG 128x115 para uso no TWiLight Menu++
-# Default: preserva aspecto e preenche (padding) com transparência até 128x115.
+# img2boxart.sh — Converts images to PNG 128x115 for use in TWiLight Menu++
+# Default: preserves aspect ratio and pads with transparency up to 128x115.
 #
-# Uso:
-#   ./img2boxart.sh <arquivos|pastas>... [-o <saida>] [--mode pad|crop|stretch] [--bg <cor>]
+# Usage:
+#   ./img2boxart.sh <files|folders>... [-o <output>] [--mode pad|crop|stretch] [--bg <color>]
 #
-# Exemplos:
-#   ./img2boxart.sh "capa.jpg" -o out/
-#   ./img2boxart.sh ./minhas_imagens -o boxart/ --mode pad --bg none
+# Examples:
+#   ./img2boxart.sh "cover.jpg" -o out/
+#   ./img2boxart.sh ./my_images -o boxart/ --mode pad --bg none
 #   ./img2boxart.sh *.webp --mode crop -o out/
 #
-# Dicas TWiLight:
-#   Coloque as saídas em: sd:/_nds/TWiLightMenu/boxart/
+# TWiLight tips:
+#   Place outputs in: sd:/_nds/TWiLightMenu/boxart/
 
 WIDTH=128
 HEIGHT=115
 MODE="pad" # pad | crop | stretch
-BG="none"  # cor de fundo para padding (ex.: none, white, black, "#00000000")
+BG="none"  # background color for padding (e.g., none, white, black, "#00000000")
 OUTDIR="./out"
 
-# --- Parse de argumentos simples ---
+# --- Simple argument parsing ---
 inputs=()
 while (("$#")); do
     case "$1" in
@@ -46,7 +46,7 @@ while (("$#")); do
         break
         ;;
     -*)
-        echo "Opção desconhecida: $1" >&2
+        echo "Unknown option: $1" >&2
         exit 1
         ;;
     *)
@@ -57,7 +57,7 @@ while (("$#")); do
 done
 
 if [ "${#inputs[@]}" -eq 0 ]; then
-    echo "Nenhuma entrada informada. Use -h para ajuda." >&2
+    echo "No input provided. Use -h for help." >&2
     exit 1
 fi
 
@@ -73,13 +73,13 @@ elif command -v convert >/dev/null 2>&1; then
 fi
 
 if ! $have_magick && ! command -v sips >/dev/null 2>&1; then
-    echo "Erro: nem ImageMagick (magick/convert) nem sips encontrados." >&2
+    echo "Error: neither ImageMagick (magick/convert) nor sips found." >&2
     exit 1
 fi
 
 shopt -s nullglob
 
-# --- Compatível com bash 3.x (sem ${var,,}) ---
+# --- Compatible with bash 3.x (no ${var,,}) ---
 is_image() {
     local f="$1"
     case "$(printf '%s' "$f" | tr '[:upper:]' '[:lower:]')" in
@@ -93,33 +93,33 @@ process_file_im() {
     local out="$2"
     case "$MODE" in
     pad)
-        # Ajusta para caber e preenche até 128x115 (sem cortar)
+        # Fit inside 128x115 and pad with background (no crop)
         "$IM_CMD" "$in" -alpha on -background "$BG" \
             -resize "${WIDTH}x${HEIGHT}" \
             -gravity center -extent "${WIDTH}x${HEIGHT}" \
             -define png:color-type=6 "png32:$out"
         ;;
     crop)
-        # Preenche completamente 128x115 e corta excesso (sem deformar)
+        # Fill 128x115 completely and crop overflow (no stretch)
         "$IM_CMD" "$in" -alpha on -background "$BG" \
             -resize "${WIDTH}x${HEIGHT}^" \
             -gravity center -extent "${WIDTH}x${HEIGHT}" \
             -define png:color-type=6 "png32:$out"
         ;;
     stretch)
-        # Deforma para exatamente 128x115
+        # Stretch to exactly 128x115
         "$IM_CMD" "$in" -alpha on -resize "${WIDTH}x${HEIGHT}!" \
             -define png:color-type=6 "png32:$out"
         ;;
     *)
-        echo "Modo inválido: $MODE (use pad|crop|stretch)"
+        echo "Invalid mode: $MODE (use pad|crop|stretch)"
         exit 1
         ;;
     esac
 }
 
 process_file_sips() {
-    # Fallback: sips só faz stretch simples
+    # Fallback: sips only supports simple stretch
     local in="$1"
     local out="$2"
     sips -s format png "$in" --out "$out" >/dev/null
@@ -129,7 +129,7 @@ process_file_sips() {
 process_path() {
     local p="$1"
     if [ -d "$p" ]; then
-        # Itera recursivamente
+        # Iterate recursively
         while IFS= read -r -d '' f; do
             if is_image "$f"; then
                 local base
@@ -155,7 +155,7 @@ process_path() {
             fi
             echo "[OK] $p -> $out"
         else
-            echo "[SKIP] Não é imagem: $p"
+            echo "[SKIP] Not an image: $p"
         fi
     fi
 }
@@ -164,4 +164,4 @@ for item in "${inputs[@]}"; do
     process_path "$item"
 done
 
-echo "Concluído. Saídas em: $OUTDIR"
+echo "Done. Outputs saved in: $OUTDIR"
