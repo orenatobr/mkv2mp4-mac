@@ -9,7 +9,7 @@ set -euo pipefail
 # - Processes files in alphanumeric order (portable on macOS).
 #
 # Usage:
-#   ./convert_videos_720p.sh "/path/to/input" ["/path/to/output"]
+#   ./convert_to_mp4_720p.sh "/path/to/input" ["/path/to/output"]
 #
 # Optional env vars:
 #   VBITS=2500k      # target video bitrate (default 2.5 Mbps)
@@ -20,8 +20,8 @@ set -euo pipefail
 #   HWDEC="..."      # hw decode opts; set empty to disable (HWDEC=)
 #
 # Examples:
-#   VBITS=3000k VMAX=3500k VBUF=7000k ./convert_videos_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"
-#   HWDEC= ./convert_videos_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"   # disable hardware decode
+#   VBITS=3000k VMAX=3500k VBUF=7000k ./convert_to_mp4_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"
+#   HWDEC= ./convert_to_mp4_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"   # disable hardware decode
 
 VBITS="${VBITS:-2500k}"
 VMAX="${VMAX:-3000k}"
