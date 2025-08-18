@@ -1,65 +1,145 @@
 # mkv2mp4-mac
 
-A lightweight bash script to batch convert video files into **optimized 720p MP4** format on macOS, with support for Apple Silicon (M1/M2) hardware acceleration.
+A lightweight toolkit for **video conversion and media artwork generation** on **macOS (Apple Silicon)**.
 
-## ✨ Features
+This project provides two main scripts:
 
-- Converts all `.mkv` and `.mp4` files from a source folder to `.mp4` in a target folder.
-- Keeps original filenames.
-- **MKV mode**: extracts only the **Portuguese audio track** and **Portuguese subtitles** if available.
-- **MP4 mode**: just converts the video without worrying about tracks.
-- **Hardware acceleration**: uses `h264_videotoolbox` on Apple Silicon for fast encoding.
-- Optionally, you can switch to `libx264` (CPU mode) for maximum compression efficiency.
+1. **`convert_videos_720p.sh`** → Batch converts MKV/MP4 files into MP4 (720p) using hardware-accelerated encoding.
+2. **`img_to_boxart.sh`** → Converts raw images into standardized **console boxart covers** for media libraries (Plex, Jellyfin, EmulationStation, etc.).
 
-## 🚀 Requirements
+---
 
-- [FFmpeg](https://ffmpeg.org/) (must be installed via [Homebrew](https://brew.sh/) or other method):
+## 🚀 Features
+
+### 🎬 Video Conversion (`convert_videos_720p.sh`)
+
+- **MKV Handling**
+
+  - Keeps **Portuguese (pt/pt-BR)** audio if available, otherwise uses the first audio track.
+  - Includes **Portuguese text-based subtitles** (ASS, SSA, SRT, SubRip → converted to `mov_text`).
+  - Skips image-based subtitles (PGS).
+
+- **MP4 Handling**
+
+  - Simple re-encode to 720p without track filtering.
+
+- **Encoding Optimizations**
+
+  - Uses `h264_videotoolbox` for **fast Apple Silicon hardware encoding**.
+  - Prevents upscaling beyond 1280×720.
+  - Normalizes pixel aspect ratio (SAR).
+
+- **Batch Conversion**
+  - Processes all `.mkv` and `.mp4` files in a folder.
+  - Maintains alphanumeric order (useful for series/episodes).
+
+---
+
+### 🎨 Boxart Generator (`img_to_boxart.sh`)
+
+- Converts any source image into a **standardized boxart cover**.
+- Automatically crops, resizes, and adds background padding.
+- Preserves aspect ratio while fitting into **2:3 portrait ratio**.
+- Generates clean PNG output optimized for media servers.
+- Uses **ImageMagick** under the hood.
+
+---
+
+## 📦 Installation
+
+Ensure dependencies are installed:
 
 ```bash
-brew install ffmpeg
+brew install ffmpeg imagemagick
 ```
+
+Clone the repo:
+
+```bash
+git clone https://github.com/yourusername/mkv2mp4-mac.git
+cd mkv2mp4-mac
+chmod +x convert_videos_720p.sh img_to_boxart.sh
+```
+
+---
 
 ## 🔧 Usage
 
-```bash
-./convert_to_mp4_720p.sh <source_folder> <target_folder>
-```
-
-Example:
+### Video Conversion
 
 ```bash
-./convert_to_mp4_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach720p"
+./convert_videos_720p.sh "/path/to/input" ["/path/to/output"]
 ```
 
-This will:
+Examples:
 
-- Scan all `.mkv` and `.mp4` files inside `Bleach/`
-- Convert them to `.mp4` in the target folder
-- Keep filenames (`BLEACH 01.mkv` → `BLEACH 01.mp4`)
+- Convert MKVs (keeping PT audio/subs):
 
-## ⚡ Performance
+  ```bash
+  ./convert_videos_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"
+  ```
 
-- By default, the script uses **Apple VideoToolbox** for 4–8× faster encoding.
-- If you prefer higher compression and efficiency, change the video codec line to:
+- Disable hardware decode:
+
+  ```bash
+  HWDEC= ./convert_videos_720p.sh "Attack on Titan"
+  ```
+
+- Increase video quality:
+
+  ```bash
+  VBITS=3000k VMAX=3500k VBUF=7000k ./convert_videos_720p.sh "One Piece"
+  ```
+
+---
+
+### Boxart Conversion
 
 ```bash
--c:v libx264 -preset slow -crf 21
+./img_to_boxart.sh input.jpg output.png
 ```
 
-instead of:
+Examples:
 
-```bash
--c:v h264_videotoolbox -b:v 2500k -maxrate 3000k -bufsize 5000k
-```
+- Convert an anime poster into clean boxart:
 
-## 📂 Project Structure
+  ```bash
+  ./img_to_boxart.sh cover_raw.jpg cover_boxart.png
+  ```
 
-```text
-.
-├── convert_to_mp4_720p.sh   # Main script
-├── README.md                # Documentation
-```
+- Batch process multiple images:
 
-## 📜 License
+  ```bash
+  for f in covers/*.jpg; do
+      ./img_to_boxart.sh "$f" "boxart/$(basename "$f" .jpg).png"
+  done
+  ```
 
-MIT License – free to use, modify and share.
+Resulting images will be properly formatted for Plex/Jellyfin/Emulators.
+
+---
+
+## ⚙️ Configuration
+
+For `convert_videos_720p.sh`, you can adjust encoding settings via environment variables:
+
+| Variable | Default                 | Description                            |
+| -------- | ----------------------- | -------------------------------------- |
+| `VBITS`  | `2500k`                 | Target video bitrate                   |
+| `VMAX`   | `3000k`                 | VBV max rate                           |
+| `VBUF`   | `5000k`                 | VBV buffer size                        |
+| `ABITS`  | `160k`                  | Audio bitrate                          |
+| `HWDEC`  | `-hwaccel videotoolbox` | Hardware decode (set empty to disable) |
+
+---
+
+## 📂 Output
+
+- **Videos:** Saved as `.mp4` in the output directory.
+- **Boxart:** Saved as `.png` with a standardized 2:3 ratio.
+
+---
+
+## 📝 License
+
+MIT License – free to use and modify.
