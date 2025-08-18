@@ -4,14 +4,14 @@ A lightweight toolkit for **video conversion and media artwork generation** on *
 
 This project provides two main scripts:
 
-1. **`convert_videos_720p.sh`** → Batch converts MKV/MP4 files into MP4 (720p) using hardware-accelerated encoding.
+1. **`convert_to_mp4_720p.sh`** → Batch converts MKV/MP4 files into MP4 (720p) using hardware-accelerated encoding.
 2. **`img_to_boxart.sh`** → Converts raw images into standardized **console boxart covers** for media libraries (Plex, Jellyfin, EmulationStation, etc.).
 
 ---
 
 ## 🚀 Features
 
-### 🎬 Video Conversion (`convert_videos_720p.sh`)
+### 🎬 Video Conversion (`convert_to_mp4_720p.sh`)
 
 - **MKV Handling**
 
@@ -56,9 +56,9 @@ brew install ffmpeg imagemagick
 Clone the repo:
 
 ```bash
-git clone https://github.com/yourusername/mkv2mp4-mac.git
+git clone https://github.com/orenatobr/mkv2mp4-mac.git
 cd mkv2mp4-mac
-chmod +x convert_videos_720p.sh img_to_boxart.sh
+chmod +x convert_to_mp4_720p.sh img_to_boxart.sh
 ```
 
 ---
@@ -68,7 +68,7 @@ chmod +x convert_videos_720p.sh img_to_boxart.sh
 ### Video Conversion
 
 ```bash
-./convert_videos_720p.sh "/path/to/input" ["/path/to/output"]
+./convert_to_mp4_720p.sh "/path/to/input" ["/path/to/output"]
 ```
 
 Examples:
@@ -76,19 +76,19 @@ Examples:
 - Convert MKVs (keeping PT audio/subs):
 
   ```bash
-  ./convert_videos_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"
+  ./convert_to_mp4_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"
   ```
 
 - Disable hardware decode:
 
   ```bash
-  HWDEC= ./convert_videos_720p.sh "Attack on Titan"
+  HWDEC= ./convert_to_mp4_720p.sh "Attack on Titan"
   ```
 
 - Increase video quality:
 
   ```bash
-  VBITS=3000k VMAX=3500k VBUF=7000k ./convert_videos_720p.sh "One Piece"
+  VBITS=3000k VMAX=3500k VBUF=7000k ./convert_to_mp4_720p.sh "One Piece"
   ```
 
 ---
@@ -121,7 +121,7 @@ Resulting images will be properly formatted for Plex/Jellyfin/Emulators.
 
 ## ⚙️ Configuration
 
-For `convert_videos_720p.sh`, you can adjust encoding settings via environment variables:
+For `convert_to_mp4_720p.sh`, you can adjust encoding settings via environment variables:
 
 | Variable | Default                 | Description                            |
 | -------- | ----------------------- | -------------------------------------- |
