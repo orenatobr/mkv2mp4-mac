@@ -2,40 +2,47 @@
 set -euo pipefail
 
 # Video Converter (MKV/MP4 -> MP4 720p, Apple Silicon optimized)
-# - MKV: keep only Portuguese (pt/pt-BR) audio if available; otherwise first audio.
-#        include Portuguese subtitles if text-based (ass/ssa/srt/subrip) -> mov_text.
-# - MP4: simple re-encode to <=720p, no track filtering.
-# - Uses h264_videotoolbox for fast hardware encoding on Apple Silicon.
-# - Processes files in alphanumeric order (portable on macOS).
+# - MKV: mantém apenas áudio PT/BR se disponível; senão, 1º áudio.
+#        inclui legendas PT se textuais (ass/ssa/srt/subrip) -> mov_text.
+# - MP4: re-encode simples para <=720p, sem filtragem de faixas.
+# - Usa h264_videotoolbox para encode rápido por hardware no Apple Silicon.
+# - Ordena e processa arquivos de forma portátil no macOS.
 #
-# Usage:
+# Uso:
 #   ./convert_to_mp4_720p.sh "/path/to/input" ["/path/to/output"]
 #
-# Optional env vars:
-#   VBITS=2500k      # target video bitrate (default 2.5 Mbps)
+# Variáveis de ambiente opcionais:
+#   VBITS=2500k      # bitrate de vídeo alvo (padrão 2.5 Mbps)
 #   VMAX=3000k       # VBV maxrate
 #   VBUF=5000k       # VBV bufsize
-#   ABITS=160k       # audio bitrate (default 160 kbps)
-#   IN_OPTS="..."    # extra input opts (defaults include corruption handling)
-#   HWDEC="..."      # hw decode opts; set empty to disable (HWDEC=)
+#   ABITS=160k       # bitrate de áudio (padrão 160 kbps)
+#   IN_OPTS="..."    # opções extras de entrada (padrão lida com corrupção)
+#   HWDEC="..."      # opts de decodificação HW; defina vazio para desativar (HWDEC=)
+#   LOGLEVEL=warning # nível de log do ffmpeg (warning|error|info); padrão: warning
 #
-# Examples:
+# Exemplos:
 #   VBITS=3000k VMAX=3500k VBUF=7000k ./convert_to_mp4_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"
-#   HWDEC= ./convert_to_mp4_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"   # disable hardware decode
+#   HWDEC= ./convert_to_mp4_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"   # desativa HW decode
 
 VBITS="${VBITS:-2500k}"
 VMAX="${VMAX:-3000k}"
 VBUF="${VBUF:-5000k}"
 ABITS="${ABITS:-160k}"
+LOGLEVEL="${LOGLEVEL:-warning}"
 
-# No upscaling to >1280x720, keep aspect ratio, normalize SAR to 1:1
-SCALE_FILTER="scale=-2:720,setsar=1"
+# Cadeia de filtros de vídeo:
+# - Força formato NV12 antes do scale (ótimo p/ videotoolbox),
+# - Faz o scale com aspect ratio (largura par) sem upscaling além de 720 de altura,
+# - Normaliza SAR para 1:1,
+# - Retorna para yuv420p (compatível amplo) no final.
+VF_CHAIN="format=nv12,scale=-2:720,setsar=1,format=yuv420p"
 
-# Input robustness (drop/ignore corrupt packets)
+# Robustez de entrada (descarta/ignora pacotes corrompidos)
 IN_OPTS="${IN_OPTS:--fflags +discardcorrupt -err_detect ignore_err}"
 
-# Optional hardware decode (unset HWDEC= to disable)
-HWDEC="${HWDEC:--hwaccel videotoolbox}"
+# Decodificação por hardware opcional (desative com HWDEC=)
+HWDEC_DEFAULT="-hwaccel videotoolbox"
+HWDEC="${HWDEC:-$HWDEC_DEFAULT}"
 
 if ! command -v ffmpeg >/dev/null 2>&1; then
 	echo "Error: ffmpeg not found. Install via: brew install ffmpeg"
@@ -52,7 +59,7 @@ mkdir -p "$OUT_DIR"
 
 found_any=false
 
-# Build a temp sorted list (newline-delimited for macOS portability)
+# Lista temporária ordenada (portabilidade no macOS)
 TMP_LIST="$(mktemp)"
 trap 'rm -f "$TMP_LIST"' EXIT
 find "$IN_DIR" -type f \( -iname "*.mkv" -o -iname "*.mp4" \) -print | LC_ALL=C sort >"$TMP_LIST"
@@ -69,6 +76,22 @@ while IFS= read -r SRC; do
 	echo "[SOURCE] $SRC"
 	echo "[OUTPUT] $DST"
 
+	# Detecta codec de vídeo para decidir uso de HW decode
+	VCODEC="$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$SRC" || true)"
+	DEC_OPTS=""
+
+	# Só usa -hwaccel videotoolbox quando faz sentido (H.264/HEVC) e se não foi desativado
+	if [[ -n "${HWDEC}" ]]; then
+		case "$VCODEC" in
+		h264 | hevc | h265)
+			DEC_OPTS="$HWDEC"
+			;;
+		*)
+			DEC_OPTS="" # força decodificação por software p/ mpeg2video, vp9, etc.
+			;;
+		esac
+	fi
+
 	case "$EXT_LOWER" in
 	mkv)
 		MAP_AUDIO_OPT=""
@@ -77,7 +100,7 @@ while IFS= read -r SRC; do
 		SUB_CODEC_OPTS=""
 		SUB_DISABLE_OPT=""
 
-		# Audio: Portuguese if available; else first audio
+		# Áudio: PT/BR se disponível; senão, primeiro áudio
 		AIDX_POR="$(ffprobe -v error -select_streams a -show_entries stream=index:stream_tags=language -of csv=p=0 "$SRC" |
 			awk -F',' 'BEGIN{IGNORECASE=1} $2 ~ /^(por|pt|pt-br)$/ {print $1; exit}' || true)"
 
@@ -95,7 +118,7 @@ while IFS= read -r SRC; do
 			fi
 		fi
 
-		# Subtitles: include PT if text-based (skip PGS image subs)
+		# Legendas: inclui PT se for textual (evita PGS)
 		SUB_PICK="$(ffprobe -v error -select_streams s -show_entries stream=index,codec_name:stream_tags=language -of csv=p=0 "$SRC" |
 			awk -F',' 'BEGIN{IGNORECASE=1} {i=$1;c=$2;l=$3; if (l ~ /^(por|pt|pt-br)$/ && c ~ /^(ass|ssa|subrip|srt|text)$/) {print i; exit}}' || true)"
 
@@ -108,9 +131,10 @@ while IFS= read -r SRC; do
 		fi
 
 		# shellcheck disable=SC2086
-		ffmpeg -nostdin -y $HWDEC $IN_OPTS -i "$SRC" \
+		ffmpeg -nostdin -loglevel "$LOGLEVEL" -stats -y $DEC_OPTS $IN_OPTS -i "$SRC" \
 			-map 0:v:0 ${MAP_AUDIO_OPT} ${MAP_SUB_OPT} ${SUB_DISABLE_OPT} \
-			-c:v h264_videotoolbox -b:v "$VBITS" -maxrate "$VMAX" -bufsize "$VBUF" -vf "$SCALE_FILTER" -pix_fmt yuv420p \
+			-c:v h264_videotoolbox -b:v "$VBITS" -maxrate "$VMAX" -bufsize "$VBUF" \
+			-vf "$VF_CHAIN" \
 			-colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
 			-c:a aac -b:a "$ABITS" -ac 2 \
 			${SUB_CODEC_OPTS} \
@@ -121,8 +145,8 @@ while IFS= read -r SRC; do
 	mp4)
 		echo "Simple MP4 re-encode (no track filtering)."
 		# shellcheck disable=SC2086
-		ffmpeg -nostdin -y $HWDEC $IN_OPTS -i "$SRC" \
-			-vf "$SCALE_FILTER" -c:v h264_videotoolbox -b:v "$VBITS" -maxrate "$VMAX" -bufsize "$VBUF" -pix_fmt yuv420p \
+		ffmpeg -nostdin -loglevel "$LOGLEVEL" -stats -y $DEC_OPTS $IN_OPTS -i "$SRC" \
+			-vf "$VF_CHAIN" -c:v h264_videotoolbox -b:v "$VBITS" -maxrate "$VMAX" -bufsize "$VBUF" \
 			-colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
 			-c:a aac -b:a "$ABITS" -ac 2 \
 			-movflags +faststart -map_metadata 0 \
