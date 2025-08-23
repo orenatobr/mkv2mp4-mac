@@ -29,7 +29,7 @@ VBUF="${VBUF:-5000k}"
 ABITS="${ABITS:-160k}"
 
 # No upscaling to >1280x720, keep aspect ratio, normalize SAR to 1:1
-SCALE_FILTER="scale='min(iw,1280)':'min(ih,720)':force_original_aspect_ratio=decrease,setsar=1"
+SCALE_FILTER="scale=-2:720,setsar=1"
 
 # Input robustness (drop/ignore corrupt packets)
 IN_OPTS="${IN_OPTS:--fflags +discardcorrupt -err_detect ignore_err}"

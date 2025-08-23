@@ -1,34 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# img2boxart.sh — Converts images to PNG 128x115 for use in TWiLight Menu++
-# Default: preserves aspect ratio and pads with transparency up to 128x115.
+# img2boxart.sh — Converts images to PNG resized for TWiLight Menu++ (or general use)
+# Default size: 250x288 (can override with first two arguments)
 #
 # Usage:
-#   ./img2boxart.sh <files|folders>... [-o <output>] [--mode pad|crop|stretch] [--bg <color>]
+#   ./img2boxart.sh [WIDTH] [HEIGHT] <files|folders>... [--mode pad|crop|stretch] [--bg <color>]
 #
 # Examples:
-#   ./img2boxart.sh "cover.jpg" -o out/
-#   ./img2boxart.sh ./my_images -o boxart/ --mode pad --bg none
-#   ./img2boxart.sh *.webp --mode crop -o out/
+#   ./img2boxart.sh 128 115 cover.jpg
+#   ./img2boxart.sh 250 288 ./my_images --mode crop --bg black
 #
-# TWiLight tips:
-#   Place outputs in: sd:/_nds/TWiLightMenu/boxart/
+# Output:
+#   Same folder as input, with "-resized.png" suffix.
+#   Example: imagem.jpg → imagem-resized.png
 
-WIDTH=128
-HEIGHT=115
+# --- Defaults for size (positional args can override) ---
+WIDTH="${1:-250}"
+HEIGHT="${2:-288}"
+if [[ $# -ge 2 && "$1" =~ ^[0-9]+$ && "$2" =~ ^[0-9]+$ ]]; then
+    shift 2
+elif [[ $# -ge 1 && "$1" =~ ^[0-9]+$ ]]; then
+    WIDTH="$1"
+    shift
+fi
+
 MODE="pad" # pad | crop | stretch
 BG="none"  # background color for padding (e.g., none, white, black, "#00000000")
-OUTDIR="./out"
 
 # --- Simple argument parsing ---
 inputs=()
 while (("$#")); do
     case "$1" in
-    -o | --out | -out | --output)
-        OUTDIR="${2:-}"
-        shift 2
-        ;;
     --mode)
         MODE="${2:-}"
         shift 2
@@ -61,8 +64,6 @@ if [ "${#inputs[@]}" -eq 0 ]; then
     exit 1
 fi
 
-mkdir -p "$OUTDIR"
-
 have_magick=false
 if command -v magick >/dev/null 2>&1; then
     IM_CMD="magick"
@@ -79,7 +80,7 @@ fi
 
 shopt -s nullglob
 
-# --- Compatible with bash 3.x (no ${var,,}) ---
+# --- Check extensions ---
 is_image() {
     local f="$1"
     case "$(printf '%s' "$f" | tr '[:upper:]' '[:lower:]')" in
@@ -93,21 +94,18 @@ process_file_im() {
     local out="$2"
     case "$MODE" in
     pad)
-        # Fit inside 128x115 and pad with background (no crop)
         "$IM_CMD" "$in" -alpha on -background "$BG" \
             -resize "${WIDTH}x${HEIGHT}" \
             -gravity center -extent "${WIDTH}x${HEIGHT}" \
             -define png:color-type=6 "png32:$out"
         ;;
     crop)
-        # Fill 128x115 completely and crop overflow (no stretch)
         "$IM_CMD" "$in" -alpha on -background "$BG" \
             -resize "${WIDTH}x${HEIGHT}^" \
             -gravity center -extent "${WIDTH}x${HEIGHT}" \
             -define png:color-type=6 "png32:$out"
         ;;
     stretch)
-        # Stretch to exactly 128x115
         "$IM_CMD" "$in" -alpha on -resize "${WIDTH}x${HEIGHT}!" \
             -define png:color-type=6 "png32:$out"
         ;;
@@ -119,7 +117,6 @@ process_file_im() {
 }
 
 process_file_sips() {
-    # Fallback: sips only supports simple stretch
     local in="$1"
     local out="$2"
     sips -s format png "$in" --out "$out" >/dev/null
@@ -129,12 +126,12 @@ process_file_sips() {
 process_path() {
     local p="$1"
     if [ -d "$p" ]; then
-        # Iterate recursively
         while IFS= read -r -d '' f; do
             if is_image "$f"; then
-                local base
+                local dir base out
+                dir="$(dirname "$f")"
                 base="$(basename "${f%.*}")"
-                local out="$OUTDIR/$base.png"
+                out="$dir/${base}-resized.png"
                 if $have_magick; then
                     process_file_im "$f" "$out"
                 else
@@ -145,9 +142,10 @@ process_path() {
         done < <(find "$p" -type f -print0)
     else
         if is_image "$p"; then
-            local base
+            local dir base out
+            dir="$(dirname "$p")"
             base="$(basename "${p%.*}")"
-            local out="$OUTDIR/$base.png"
+            out="$dir/${base}-resized.png"
             if $have_magick; then
                 process_file_im "$p" "$out"
             else
@@ -164,4 +162,4 @@ for item in "${inputs[@]}"; do
     process_path "$item"
 done
 
-echo "Done. Outputs saved in: $OUTDIR"
+echo "Done."
