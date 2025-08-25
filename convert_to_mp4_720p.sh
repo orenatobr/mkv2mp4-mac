@@ -59,18 +59,36 @@ mkdir -p "$OUT_DIR"
 
 found_any=false
 
-# Lista temporária ordenada (portabilidade no macOS)
+# Lista temporária ordenada (portabilidade no macOS) — caminhos RELATIVOS
 TMP_LIST="$(mktemp)"
 trap 'rm -f "$TMP_LIST"' EXIT
-find "$IN_DIR" -type f \( -iname "*.mkv" -o -iname "*.mp4" \) -print | LC_ALL=C sort >"$TMP_LIST"
+(
+	cd "$IN_DIR"
+	find . -type f \( -iname "*.mkv" -o -iname "*.mp4" \) -print | LC_ALL=C sort
+) >"$TMP_LIST"
 
-while IFS= read -r SRC; do
+while IFS= read -r REL; do
 	found_any=true
-	BASENAME="$(basename "$SRC")"
+
+	# Caminho absoluto de origem e componentes
+	SRC="$IN_DIR/$REL"
+	BASENAME="$(basename "$REL")"
 	STEM="${BASENAME%.*}"
 	EXT="${BASENAME##*.}"
 	EXT_LOWER="$(printf '%s' "$EXT" | tr '[:upper:]' '[:lower:]')"
-	DST="$OUT_DIR/$STEM.mp4"
+
+	# Diretório relativo (ex.: ./1a temp) -> remover prefixo "./"
+	REL_DIR="$(dirname "$REL")"
+	REL_DIR="${REL_DIR#./}"
+	# Se for ".", queremos vazio (arquivos na raiz)
+	[[ "$REL_DIR" == "." ]] && REL_DIR=""
+
+	# Diretório de destino preservando a mesma hierarquia
+	DST_DIR="$OUT_DIR"
+	[[ -n "$REL_DIR" ]] && DST_DIR="$OUT_DIR/$REL_DIR"
+	mkdir -p "$DST_DIR"
+
+	DST="$DST_DIR/$STEM.mp4"
 
 	echo "------------------------------------------------------------"
 	echo "[SOURCE] $SRC"
@@ -83,12 +101,8 @@ while IFS= read -r SRC; do
 	# Só usa -hwaccel videotoolbox quando faz sentido (H.264/HEVC) e se não foi desativado
 	if [[ -n "${HWDEC}" ]]; then
 		case "$VCODEC" in
-		h264 | hevc | h265)
-			DEC_OPTS="$HWDEC"
-			;;
-		*)
-			DEC_OPTS="" # força decodificação por software p/ mpeg2video, vp9, etc.
-			;;
+		h264 | hevc | h265) DEC_OPTS="$HWDEC" ;;
+		*) DEC_OPTS="" ;; # força SW decode para mpeg2video, vp9, etc.
 		esac
 	fi
 
