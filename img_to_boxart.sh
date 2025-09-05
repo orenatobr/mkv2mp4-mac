@@ -16,9 +16,12 @@ set -euo pipefail
 #   Example: imagem.jpg → imagem-resized.png
 
 # --- Defaults for size (positional args can override) ---
-WIDTH="${1:-250}"
-HEIGHT="${2:-288}"
+WIDTH=250
+HEIGHT=288
+
 if [[ $# -ge 2 && "$1" =~ ^[0-9]+$ && "$2" =~ ^[0-9]+$ ]]; then
+    WIDTH="$1"
+    HEIGHT="$2"
     shift 2
 elif [[ $# -ge 1 && "$1" =~ ^[0-9]+$ ]]; then
     WIDTH="$1"

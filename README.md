@@ -110,9 +110,19 @@ Examples:
 - Batch process multiple images:
 
   ```bash
-  for f in covers/*.jpg; do
-      ./img_to_boxart.sh "$f" "boxart/$(basename "$f" .jpg).png"
+  mkdir -p boxart
+  for f in ~/Pictures/*.jpg; do
+    ./img_to_boxart.sh "$f"
+    src="${f%.*}-resized.png"
+    dst="boxart/$(basename "${f%.*}").png"
+    mv "$src" "$dst"
   done
+  ```
+
+- Batch process multiple cue:
+
+  ```bash
+  ./cue2iso_recursive.sh ~/Downloads/
   ```
 
 Resulting images will be properly formatted for Plex/Jellyfin/Emulators.
