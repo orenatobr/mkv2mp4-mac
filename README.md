@@ -101,22 +101,22 @@ Examples:
 
 Examples:
 
-- Convert an anime poster into clean boxart:
+- A file, saving aside of in .png:
 
   ```bash
-  ./img_to_boxart.sh cover_raw.jpg cover_boxart.png
+  ./img2boxart.sh PS3 "~/Downloads/God of War.jpg"
   ```
 
-- Batch process multiple images:
+- A file, saving with name/dir specifics:
 
   ```bash
-  mkdir -p boxart
-  for f in ~/Pictures/*.jpg; do
-    ./img_to_boxart.sh "$f"
-    src="${f%.*}-resized.png"
-    dst="boxart/$(basename "${f%.*}").png"
-    mv "$src" "$dst"
-  done
+  ./img2boxart.sh PS2 "~/in/Shadow of the Colossus.jpeg" "~/out/SotC.png" --mode crop --bg black
+  ```
+
+- Whole folder (recursive), saving to another folder mirroring the structure:
+
+  ```bash
+  ./img2boxart.sh PSX "~/covers_raw" "~/covers_png"
   ```
 
 - Batch process multiple cue:
