@@ -4,14 +4,15 @@ A lightweight toolkit for **video conversion and media artwork generation** on *
 
 This project provides two main scripts:
 
-1. **`convert_to_mp4_720p.sh`** → Batch converts MKV/MP4 files into MP4 (720p) using hardware-accelerated encoding.
-2. **`img_to_boxart.sh`** → Converts raw images into standardized **console boxart covers** for media libraries (Plex, Jellyfin, EmulationStation, etc.).
+1. **`convert2mp4_720p.sh`** → Batch converts MKV/MP4 files into MP4 (720p) using hardware-accelerated encoding.
+2. **`img2boxart.sh`** → Converts raw images into standardized **console boxart covers** for media libraries (Plex, Jellyfin, EmulationStation, etc.).
+3. **`cue2iso.sh`** → Converts bin + cue images to iso, mainly to avoid multi-tracking files.
 
 ---
 
 ## 🚀 Features
 
-### 🎬 Video Conversion (`convert_to_mp4_720p.sh`)
+### 🎬 Video Conversion (`convert2mp4_720p.sh`)
 
 - **MKV Handling**
 
@@ -35,7 +36,7 @@ This project provides two main scripts:
 
 ---
 
-### 🎨 Boxart Generator (`img_to_boxart.sh`)
+### 🎨 Boxart Generator (`img2boxart.sh`)
 
 - Converts any source image into a **standardized boxart cover**.
 - Automatically crops, resizes, and adds background padding.
@@ -58,7 +59,7 @@ Clone the repo:
 ```bash
 git clone https://github.com/orenatobr/mkv2mp4-mac.git
 cd mkv2mp4-mac
-chmod +x convert_to_mp4_720p.sh img_to_boxart.sh
+chmod +x convert2mp4_720p.sh img2boxart.sh
 ```
 
 ---
@@ -68,7 +69,7 @@ chmod +x convert_to_mp4_720p.sh img_to_boxart.sh
 ### Video Conversion
 
 ```bash
-./convert_to_mp4_720p.sh "/path/to/input" ["/path/to/output"]
+./convert2mp4_720p.sh "/path/to/input" ["/path/to/output"]
 ```
 
 Examples:
@@ -76,19 +77,19 @@ Examples:
 - Convert MKVs (keeping PT audio/subs):
 
   ```bash
-  ./convert_to_mp4_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"
+  ./convert2mp4_720p.sh "Bleach" "/Volumes/Renato/Animes/Bleach"
   ```
 
 - Disable hardware decode:
 
   ```bash
-  HWDEC= ./convert_to_mp4_720p.sh "Attack on Titan"
+  HWDEC= ./convert2mp4_720p.sh "Attack on Titan"
   ```
 
 - Increase video quality:
 
   ```bash
-  VBITS=3000k VMAX=3500k VBUF=7000k ./convert_to_mp4_720p.sh "One Piece"
+  VBITS=3000k VMAX=3500k VBUF=7000k ./convert2mp4_720p.sh "One Piece"
   ```
 
 ---
@@ -96,7 +97,7 @@ Examples:
 ### Boxart Conversion
 
 ```bash
-./img_to_boxart.sh input.jpg output.png
+./img2boxart.sh input.jpg output.png
 ```
 
 Examples:
@@ -119,19 +120,21 @@ Examples:
   ./img2boxart.sh PSX "~/covers_raw" "~/covers_png"
   ```
 
+Resulting images will be properly formatted for Plex/Jellyfin/Emulators.
+
+### Convert bin + cue to iso
+
 - Batch process multiple cue:
 
   ```bash
-  ./cue2iso_recursive.sh ~/Downloads/
+  ./cue2iso.sh ~/Downloads/
   ```
-
-Resulting images will be properly formatted for Plex/Jellyfin/Emulators.
 
 ---
 
 ## ⚙️ Configuration
 
-For `convert_to_mp4_720p.sh`, you can adjust encoding settings via environment variables:
+For `convert2mp4_720p.sh`, you can adjust encoding settings via environment variables:
 
 | Variable | Default                 | Description                            |
 | -------- | ----------------------- | -------------------------------------- |
@@ -147,6 +150,7 @@ For `convert_to_mp4_720p.sh`, you can adjust encoding settings via environment v
 
 - **Videos:** Saved as `.mp4` in the output directory.
 - **Boxart:** Saved as `.png` with a standardized 2:3 ratio.
+- **ISO:** Saved as `.iso` file.
 
 ---
 
